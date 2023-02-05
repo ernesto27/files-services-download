@@ -5,15 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math/rand"
 	"net/http"
 	"os"
 	"regexp"
-	"strings"
-	"time"
 
 	"github.com/chromedp/chromedp"
-	"github.com/dustin/go-humanize"
 )
 
 type Tiktok struct {
@@ -45,22 +41,6 @@ func (t *Tiktok) extract(res string) {
 	t.VideoURL = src
 }
 
-type WriteCounter struct {
-	Total uint64
-}
-
-func (wc *WriteCounter) Write(p []byte) (int, error) {
-	n := len(p)
-	wc.Total += uint64(n)
-	wc.PrintProgress()
-	return n, nil
-}
-
-func (wc WriteCounter) PrintProgress() {
-	fmt.Printf("\r%s", strings.Repeat(" ", 35))
-	fmt.Printf("\rDownloading... %s complete", humanize.Bytes(wc.Total))
-}
-
 func (t *Tiktok) download() (string, error) {
 	t.HTMLExtract()
 
@@ -75,7 +55,7 @@ func (t *Tiktok) download() (string, error) {
 	}
 	defer response.Body.Close()
 
-	filename := "file" + ".mp4"
+	filename := getRandomString() + ".mp4"
 	file, err := os.Create(filename)
 	if err != nil {
 		return "", err
@@ -107,17 +87,4 @@ func (t *Tiktok) DownloadFile() (string, error) {
 	}
 
 	return s, err
-}
-
-func getRandomString() string {
-	rand.Seed(time.Now().Unix())
-	var output strings.Builder
-	charSet := "abcdedfghijklmnopqrstABCDEFGHIJKLMNOP"
-	length := 20
-	for i := 0; i < length; i++ {
-		random := rand.Intn(len(charSet))
-		randomChar := charSet[random]
-		output.WriteString(string(randomChar))
-	}
-	return output.String()
 }
