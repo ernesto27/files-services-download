@@ -22,7 +22,6 @@ type Tiktok struct {
 }
 
 func (t *Tiktok) HTMLExtract() error {
-
 	ctx, cancel := chromedp.NewContext(context.Background())
 	defer cancel()
 
@@ -41,10 +40,8 @@ func (t *Tiktok) HTMLExtract() error {
 }
 
 func (t *Tiktok) extract(res string) {
-	fmt.Println(res)
 	srcRegex := regexp.MustCompile(`<video.*?src="(.*?)".*?</video>`)
 	src := srcRegex.FindStringSubmatch(res)[1]
-	fmt.Println(src)
 	t.VideoURL = src
 }
 
@@ -64,22 +61,21 @@ func (wc WriteCounter) PrintProgress() {
 	fmt.Printf("\rDownloading... %s complete", humanize.Bytes(wc.Total))
 }
 
-func (t *Tiktok) DownloadFile() (string, error) {
+func (t *Tiktok) download() (string, error) {
 	t.HTMLExtract()
 
-	// TODO
-	// THIS somethimes files, try n times
 	response, err := http.Get(t.VideoURL)
+
 	if err != nil {
 		return "", err
 	}
-	defer response.Body.Close()
 
 	if response.StatusCode != 200 {
 		return "", errors.New("Received non 200 response code")
 	}
+	defer response.Body.Close()
 
-	filename := getRandomString() + ".mp4"
+	filename := "file" + ".mp4"
 	file, err := os.Create(filename)
 	if err != nil {
 		return "", err
@@ -93,6 +89,24 @@ func (t *Tiktok) DownloadFile() (string, error) {
 	}
 
 	return "Success download filename: " + filename, nil
+
+}
+
+func (t *Tiktok) DownloadFile() (string, error) {
+	retries := 5
+	var s string
+	var err error
+
+	fmt.Println("Searching file url...")
+
+	for i := 0; i < retries; i++ {
+		s, err = t.download()
+		if err == nil {
+			return s, nil
+		}
+	}
+
+	return s, err
 }
 
 func getRandomString() string {

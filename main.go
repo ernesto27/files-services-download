@@ -34,10 +34,17 @@ func Builder(url string) Service {
 }
 
 func main() {
+	if len(os.Args) == 1 {
+		fmt.Println("Usage ./files-download URLIMAGE")
+		return
+	}
 
-	t := Builder("")
-	t.DownloadFile()
-
+	t := Builder(os.Args[1])
+	resp, err := t.DownloadFile()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(resp)
 }
 
 func downloadFile(htmlMeta *HTMLMeta) (string, error) {
