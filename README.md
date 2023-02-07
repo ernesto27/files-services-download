@@ -1,8 +1,7 @@
 # files-services-download
 
-### Command line app to downlaod images, videos from instagram and tiktok
+### Command line app to download images, videos from instagram and tiktok
 
-Note: Created for the final project of the CS50 computer sciene course
 
 ## Install instructions
 
