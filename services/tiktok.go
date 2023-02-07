@@ -17,7 +17,7 @@ type Tiktok struct {
 	VideoURL string
 }
 
-func (t *Tiktok) HTMLExtract() error {
+func (t *Tiktok) GetHTMLString() (string, error) {
 	ctx, cancel := chromedp.NewContext(context.Background())
 	defer cancel()
 
@@ -27,23 +27,24 @@ func (t *Tiktok) HTMLExtract() error {
 		chromedp.OuterHTML("html", &res),
 	)
 	if err != nil {
-		fmt.Println(err)
-		return err
+		return "", err
 	}
 
-	t.extract(res)
+	return res, nil
+}
+
+func (t *Tiktok) setVideoURL(res string) error {
+	srcRegex := regexp.MustCompile(`<video.*?src="(.*?)".*?</video>`)
+	src := srcRegex.FindStringSubmatch(res)
+	if len(src) < 2 {
+		return errors.New("Video URL not found")
+	}
+
+	t.VideoURL = src[1]
 	return nil
 }
 
-func (t *Tiktok) extract(res string) {
-	srcRegex := regexp.MustCompile(`<video.*?src="(.*?)".*?</video>`)
-	src := srcRegex.FindStringSubmatch(res)[1]
-	t.VideoURL = src
-}
-
-func (t *Tiktok) download() (string, error) {
-	t.HTMLExtract()
-
+func (t *Tiktok) downloadSaveFile() (string, error) {
 	response, err := http.Get(t.VideoURL)
 
 	if err != nil {
@@ -69,22 +70,31 @@ func (t *Tiktok) download() (string, error) {
 	}
 
 	return "Success download filename: " + filename, nil
-
 }
 
 func (t *Tiktok) DownloadFile() (string, error) {
 	retries := 5
-	var s string
+	var response string
 	var err error
 
 	fmt.Println("Searching file url...")
 
 	for i := 0; i < retries; i++ {
-		s, err = t.download()
+		s, err := t.GetHTMLString()
+		if err != nil {
+			continue
+		}
+
+		err = t.setVideoURL(s)
+		if err != nil {
+			continue
+		}
+
+		response, err := t.downloadSaveFile()
 		if err == nil {
-			return s, nil
+			return response, nil
 		}
 	}
 
-	return s, err
+	return response, err
 }

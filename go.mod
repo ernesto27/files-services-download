@@ -5,5 +5,6 @@ go 1.16
 require (
 	github.com/chromedp/chromedp v0.8.7
 	github.com/dustin/go-humanize v1.0.0
+	github.com/jarcoal/httpmock v1.3.0 // indirect
 	golang.org/x/net v0.0.0-20210316092652-d523dce5a7f4
 )
