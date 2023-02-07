@@ -25,7 +25,7 @@ func Builder(urlStr string) (Service, error) {
 			URL: urlStr,
 		}, nil
 	default:
-		return nil, errors.New("Not valid url host")
+		return nil, errors.New("not valid url host")
 	}
 
 }

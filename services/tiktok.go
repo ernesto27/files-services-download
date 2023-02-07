@@ -37,7 +37,7 @@ func (t *Tiktok) setVideoURL(res string) error {
 	srcRegex := regexp.MustCompile(`<video.*?src="(.*?)".*?</video>`)
 	src := srcRegex.FindStringSubmatch(res)
 	if len(src) < 2 {
-		return errors.New("Video URL not found")
+		return errors.New("video URL not found")
 	}
 
 	t.VideoURL = src[1]
@@ -52,7 +52,7 @@ func (t *Tiktok) downloadSaveFile() (string, error) {
 	}
 
 	if response.StatusCode != 200 {
-		return "", errors.New("Received non 200 response code")
+		return "", errors.New("received non 200 response code")
 	}
 	defer response.Body.Close()
 
