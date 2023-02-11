@@ -1,8 +1,12 @@
 package services
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"math/rand"
+	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -36,4 +40,32 @@ func getRandomString() string {
 		output.WriteString(string(randomChar))
 	}
 	return output.String()
+}
+
+func downloadSaveFile(url string, extension string) (string, error) {
+	response, err := http.Get(url)
+
+	if err != nil {
+		return "", err
+	}
+
+	if response.StatusCode != 200 {
+		return "", errors.New("received non 200 response code")
+	}
+	defer response.Body.Close()
+
+	filename := getRandomString() + "." + extension
+	file, err := os.Create(filename)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	counter := &WriteCounter{}
+	_, err = io.Copy(file, io.TeeReader(response.Body, counter))
+	if err != nil {
+		return "", err
+	}
+
+	return "Success download filename: " + filename, nil
 }

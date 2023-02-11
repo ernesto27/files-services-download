@@ -4,7 +4,6 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"os"
 
 	"golang.org/x/net/html"
 )
@@ -13,13 +12,20 @@ type Instagram struct {
 	URL         string
 	Title       string `json:"title"`
 	Description string `json:"description"`
-	Image       string `json:"image"`
+	ImageURL    string `json:"image"`
 	SiteName    string `json:"site_name"`
-	Video       string `json:"video"`
+	VideoURL    string `json:"video"`
 }
 
 func (i *Instagram) DownloadFile() (string, error) {
-	err := i.getHTMLMeta()
+	resp, err := i.getBody()
+	if err != nil {
+		return "", err
+	}
+
+	defer resp.Body.Close()
+
+	err = i.setValues(resp.Body)
 	if err != nil {
 		return "", err
 	}
@@ -27,64 +33,43 @@ func (i *Instagram) DownloadFile() (string, error) {
 	var url string
 	var filenameExt string
 
-	if i.Video != "" {
-		url = i.Video
+	if i.VideoURL != "" {
+		url = i.VideoURL
 		filenameExt = "mp4"
 	} else {
-		url = i.Image
+		url = i.ImageURL
 		filenameExt = "jpeg"
 	}
 
-	response, err := http.Get(url)
-	if err != nil {
-		return "", err
-	}
-	defer response.Body.Close()
-
-	if response.StatusCode != 200 {
-		return "", errors.New("received non 200 response code")
-	}
-
-	filename := getRandomString() + "." + filenameExt
-	file, err := os.Create(filename)
-	if err != nil {
-		return "", err
-	}
-	defer file.Close()
-
-	counter := &WriteCounter{}
-	_, err = io.Copy(file, io.TeeReader(response.Body, counter))
+	r, err := downloadSaveFile(url, filenameExt)
 	if err != nil {
 		return "", err
 	}
 
-	return "Success download filename: " + filename, nil
+	return r, nil
 }
 
-func (i *Instagram) getHTMLMeta() error {
+func (i *Instagram) getBody() (*http.Response, error) {
 	req, err := http.NewRequest("GET", i.URL, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	req.Header.Set("User-Agent", "Instagram 10.3.2 (iPhone7,2; iPhone OS 9_3_3; en_US; en-US; scale=2.00; 750x1334) AppleWebKit/420+")
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if resp.StatusCode != 200 {
-		return errors.New(resp.Status)
+		return nil, errors.New("received non 200 response code")
 	}
 
-	defer resp.Body.Close()
-
-	i.extract(resp.Body)
-	return nil
+	return resp, nil
 }
 
-func (i *Instagram) extract(resp io.Reader) {
+func (i *Instagram) setValues(resp io.Reader) error {
 	z := html.NewTokenizer(resp)
 
 	titleFound := false
@@ -93,7 +78,7 @@ func (i *Instagram) extract(resp io.Reader) {
 		tt := z.Next()
 		switch tt {
 		case html.ErrorToken:
-			return
+			return nil
 		case html.StartTagToken, html.SelfClosingTagToken:
 			t := z.Token()
 			if t.Data == "title" {
@@ -117,7 +102,7 @@ func (i *Instagram) extract(resp io.Reader) {
 
 				ogImage, ok := extractMetaProperty(t, "og:image")
 				if ok {
-					i.Image = ogImage
+					i.ImageURL = ogImage
 				}
 
 				ogSiteName, ok := extractMetaProperty(t, "og:site_name")
@@ -127,7 +112,7 @@ func (i *Instagram) extract(resp io.Reader) {
 
 				ogVideo, ok := extractMetaProperty(t, "og:video")
 				if ok {
-					i.Video = ogVideo
+					i.VideoURL = ogVideo
 				}
 			}
 		case html.TextToken:
